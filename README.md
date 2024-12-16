@@ -1,0 +1,2 @@
+# FlappyRedEagle2.0
+一个基于FlappyBird开发的FlappyRedEagle管道小木游戏，目前实现了部分功能，游玩体验还不错，可作为机器学习模型训练的基础程序。

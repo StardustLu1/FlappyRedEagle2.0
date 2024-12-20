@@ -1,6 +1,7 @@
 import pygame
 import os
 import random
+import json  # 用于存储历史得分
 
 pygame.init()
 
@@ -171,6 +172,22 @@ def draw_score(score, screen):
 reset_button = pygame.image.load(os.path.join(script_dir, "assets", "sprites", "RC.png"))
 reset_button = pygame.transform.scale(reset_button, (160, 100))  # 缩放按钮为适合的大小
 
+# 历史最高分存储文件路径
+HIGHSCORE_FILE = "highscores.json"
+
+# 尝试读取历史最高分
+def load_high_scores():
+    if os.path.exists(HIGHSCORE_FILE):
+        with open(HIGHSCORE_FILE, "r") as f:
+            return json.load(f)
+    else:
+        return {"high_scores": [0, 0, 0]}  # 如果没有历史记录，返回三个0
+
+# 保存历史最高分
+def save_high_scores(high_scores):
+    with open(HIGHSCORE_FILE, "w") as f:
+        json.dump(high_scores, f)
+
 # 游戏结束重置函数
 def reset_game():
     global game_over, score, bird, pipes, ground_obj, delay_start  # 确保重置所有相关的全局变量
@@ -197,6 +214,32 @@ def game_loop():
 
     background_x = 0  # 背景的初始x位置
     background_velocity = 2  # 背景滚动速度
+
+    # 读取历史最高分
+    high_scores_data = load_high_scores()
+
+    # 绘制分数
+    def draw_score(score, screen):
+        score_str = str(score)
+        width = len(score_str) * 20
+        x = SCREEN_WIDTH // 2 - width // 2
+        for i, digit in enumerate(score_str):
+            screen.blit(digit_images[int(digit)], (x + i * 20, 20))
+
+    # 显示历史最高分
+    def display_high_scores(scores):
+        screen.fill((0, 0, 0))  # 填充背景为黑色
+        font = pygame.font.Font(None, 50)  # 使用字体
+        title_text = font.render("Top High Score", True, (255, 255, 255))  # 标题文本
+        screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, SCREEN_HEIGHT // 3))  # 显示标题
+
+        if scores:  # 确保有历史得分
+            highest_score = scores[0]  # 取第一个分数作为历史最高分
+            score_text = font.render(str(highest_score), True, (255, 255, 255))  # 渲染得分文本
+            screen.blit(score_text, (SCREEN_WIDTH // 2 - score_text.get_width() // 2, SCREEN_HEIGHT // 3 + 60))  # 显示得分
+
+        pygame.display.update()
+        pygame.time.wait(3000)  # 显示3秒
 
     while running:
         clock.tick(60)
@@ -260,6 +303,12 @@ def game_loop():
                 # 游戏结束画面
                 screen.fill((0, 0, 0))
 
+                # 更新历史最高分
+                if score > min(high_scores_data["high_scores"]):
+                    high_scores_data["high_scores"].append(score)
+                    high_scores_data["high_scores"] = sorted(high_scores_data["high_scores"], reverse=True)[:3]
+                    save_high_scores(high_scores_data)
+
                 if score < 20:
                     game_over_image = game_over_images["low"]
                 else:
@@ -286,8 +335,20 @@ def game_loop():
                         delay_start = None
                         reset_game()  # 调用重置函数
 
-        pygame.display.update()
+                # 查看历史最高分按钮
+                history_button = pygame.image.load(os.path.join(script_dir, "assets", "sprites", "history.png"))
+                history_button = pygame.transform.scale(history_button, (50, 50))  # 设置按钮大小
+                history_button_x = (SCREEN_WIDTH - history_button.get_width()) // 2
+                history_button_y = button_y + reset_button.get_height() - 10
+                screen.blit(history_button, (history_button_x, history_button_y))
 
+                # 检查历史按钮点击
+                if pygame.mouse.get_pressed()[0]:
+                    mouse_x, mouse_y = pygame.mouse.get_pos()
+                    if history_button_x <= mouse_x <= history_button_x + history_button.get_width() and history_button_y <= mouse_y <= history_button_y + history_button.get_height():
+                        display_high_scores(high_scores_data["high_scores"])  # 显示历史最高分
+
+        pygame.display.update()
     pygame.quit()
 
 if __name__ == "__main__":
